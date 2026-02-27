@@ -1,7 +1,6 @@
 import pandas as pd
 
-# ===== CONFIGURAÇÃO =====
-YEAR = 2023
+YEARS = [2020, 2021, 2022, 2023, 2024]
 
 BANKS = [
     "ITAU UNIBANCO HOLDING S.A.",
@@ -11,36 +10,59 @@ BANKS = [
     "BCO BTG PACTUAL S.A."
 ]
 
-BASE_PATH = f"data_raw/dfp_cia_aberta_{YEAR}"
-
-def load_csv(filename):
-    path = f"{BASE_PATH}/{filename}"
+def load_csv(year: int, filename: str) -> pd.DataFrame:
+    path = f"data_raw/dfp_cia_aberta_{year}/{filename}"
     return pd.read_csv(path, sep=";", encoding="latin1")
 
-def filter_banks(df):
-    return df[df["DENOM_CIA"].isin(BANKS)]
-
-def filter_last_exercise(df):
-    return df[df["ORDEM_EXERC"] == "ÚLTIMO"]
+def extract_metric(df: pd.DataFrame, ds_conta: str) -> pd.DataFrame:
+    # Pega apenas o exercício atual ("ÚLTIMO") e a conta exata pelo texto.
+    return df[
+        (df["DS_CONTA"] == ds_conta) &
+        (df["ORDEM_EXERC"] == "ÚLTIMO")
+    ][["DENOM_CIA", "DT_REFER", "VL_CONTA"]].copy()
 
 def main():
-    # Carregar BPA e BPP
-    df_bpa = load_csv(f"dfp_cia_aberta_BPA_con_{YEAR}.csv")
-    df_bpp = load_csv(f"dfp_cia_aberta_BPP_con_{YEAR}.csv")
+    all_data = []
 
-    # Filtrar bancos
-    df_bpa = filter_banks(df_bpa)
-    df_bpp = filter_banks(df_bpp)
+    for year in YEARS:
+        print(f"Processando ano {year}")
 
-    # Filtrar apenas exercício atual
-    df_bpa = filter_last_exercise(df_bpa)
-    df_bpp = filter_last_exercise(df_bpp)
+        df_bpa = load_csv(year, f"dfp_cia_aberta_BPA_con_{year}.csv")
+        df_bpp = load_csv(year, f"dfp_cia_aberta_BPP_con_{year}.csv")
 
-    print("BPA filtrado:", df_bpa.shape)
-    print("BPP filtrado:", df_bpp.shape)
+        # Filtrar só os 5 bancos
+        df_bpa = df_bpa[df_bpa["DENOM_CIA"].isin(BANKS)]
+        df_bpp = df_bpp[df_bpp["DENOM_CIA"].isin(BANKS)]
 
-    print("DT_REFER BPA:", sorted(df_bpa["DT_REFER"].unique()))
-    print("DT_REFER BPP:", sorted(df_bpp["DT_REFER"].unique()))
+        # Extrair métricas base
+        total_assets = extract_metric(df_bpa, "Ativo Total")
+        equity = extract_metric(df_bpp, "Patrimônio Líquido Consolidado")
+
+        total_assets["metric"] = "total_assets"
+        equity["metric"] = "equity"
+
+        year_data = pd.concat([total_assets, equity], ignore_index=True)
+        year_data["year"] = year
+
+        all_data.append(year_data)
+
+    final_df = pd.concat(all_data, ignore_index=True)
+
+    # Pivot para ter assets e equity na mesma linha por banco/ano
+    pivot = final_df.pivot_table(
+        index=["DENOM_CIA", "year", "DT_REFER"],
+        columns="metric",
+        values="VL_CONTA",
+        aggfunc="first"
+    ).reset_index()
+
+    # Derivar passivo: liabilities = assets - equity
+    pivot["total_liabilities"] = pivot["total_assets"] - pivot["equity"]
+
+    print("\nChecagem (primeiras 10 linhas):")
+    print(pivot[["DENOM_CIA", "year", "DT_REFER", "total_assets", "equity", "total_liabilities"]].head(10))
+
+    print("\nTotal linhas (pivot):", pivot.shape)
 
 if __name__ == "__main__":
     main()

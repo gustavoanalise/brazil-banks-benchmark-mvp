@@ -26,3 +26,16 @@ total_assets: DS_CONTA = "Ativo Total" (usar ORDEM_EXERC = "ÚLTIMO")
 total_liabilities: DS_CONTA = "Passivo Total" (usar ORDEM_EXERC = "ÚLTIMO")
 
 equity: DS_CONTA = "Patrimônio Líquido Consolidado" (usar ORDEM_EXERC = "ÚLTIMO")
+
+Nota sobre total_liabilities (MVP)
+
+No DFP (BPP_con) para bancos, a linha "Passivo Total" aparece com valor igual ao "Ativo Total" (total do balanço).
+Para o MVP, total_liabilities será derivado por equação contábil:
+
+total_liabilities = total_assets − equity
+Onde:
+
+total_assets vem de BPA_con: DS_CONTA = "Ativo Total" e ORDEM_EXERC = "ÚLTIMO"
+
+equity vem de BPP_con: DS_CONTA = "Patrimônio Líquido Consolidado" e ORDEM_EXERC = "ÚLTIMO"
+Limitação: isso assume consistência da equação contábil e evita dependência de um rótulo que, para bancos, representa o total do lado direito.
