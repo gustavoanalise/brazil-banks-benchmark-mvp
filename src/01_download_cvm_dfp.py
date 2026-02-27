@@ -3,7 +3,7 @@ import requests
 import zipfile
 
 # ===== CONFIGURAÇÃO =====
-YEARS = [2023]  # vamos começar testando com apenas 1 ano
+YEARS = [2020, 2021, 2022, 2023, 2024]
 BASE_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/"
 OUTPUT_DIR = "data_raw"
 
