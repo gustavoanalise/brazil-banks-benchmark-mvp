@@ -1,4 +1,7 @@
 import pandas as pd
+import os
+import zipfile
+import requests
 
 YEARS = [2020, 2021, 2022, 2023, 2024]
 
@@ -62,6 +65,38 @@ def build_unmapped_report(df, demo_label, year, used_ds_conta_list):
 
     return df_u
 
+def ensure_raw_data(year):
+    """
+    Garante que o ZIP do ano foi baixado e extraído em data_raw/dfp_cia_aberta_{year}/
+    """
+    folder = f"data_raw/dfp_cia_aberta_{year}"
+    os.makedirs(folder, exist_ok=True)
+
+    # Se os CSVs principais já existem, não faz nada
+    expected = [
+        f"{folder}/dfp_cia_aberta_BPA_con_{year}.csv",
+        f"{folder}/dfp_cia_aberta_BPP_con_{year}.csv",
+        f"{folder}/dfp_cia_aberta_DRE_con_{year}.csv",
+    ]
+    if all(os.path.exists(p) for p in expected):
+        return
+
+    url = f"https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_{year}.zip"
+    zip_path = f"{folder}/dfp_cia_aberta_{year}.zip"
+
+    # Baixa ZIP se não existir
+    if not os.path.exists(zip_path):
+        r = requests.get(url, stream=True, timeout=120)
+        r.raise_for_status()
+        with open(zip_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+
+    # Extrai
+    with zipfile.ZipFile(zip_path, "r") as z:
+        z.extractall(folder)
+
 def load_csv(year: int, filename: str) -> pd.DataFrame:
     path = f"data_raw/dfp_cia_aberta_{year}/{filename}"
     return pd.read_csv(path, sep=";", encoding="latin1")
@@ -104,6 +139,7 @@ def main():
     unmapped_all = []
     for year in YEARS:
         print(f"Processando ano {year}")
+        ensure_raw_data(year)
 
         df_bpa = load_csv(year, f"dfp_cia_aberta_BPA_con_{year}.csv")
         df_bpp = load_csv(year, f"dfp_cia_aberta_BPP_con_{year}.csv")
@@ -164,6 +200,25 @@ def main():
     pivot["ROE"] = pivot["net_income"] / pivot["equity"]
     pivot["ROA"] = pivot["net_income"] / pivot["total_assets"]
     pivot["operating_ROA"] = pivot["operating_result_proxy"] / pivot["total_assets"]
+
+    # ---------------------------
+    # YoY Growth (Year over Year)
+    # ---------------------------
+
+    yoy_metrics = [
+        "total_assets",
+        "equity",
+        "net_income",
+        "operating_result_proxy",
+    ]
+
+    for metric in yoy_metrics:
+        if metric in pivot.columns:
+            pivot = pivot.sort_values(["DENOM_CIA", "year"])
+            pivot[f"{metric}_YoY"] = (
+                pivot.groupby("DENOM_CIA")[metric]
+                .pct_change(fill_method=None)
+            )
 
     # Salvar dataset final
     pivot.to_csv("outputs/final_dataset.csv", index=False)
