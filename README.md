@@ -105,13 +105,13 @@ O projeto implementa:
 ## Como Rodar o Projeto
 
 ### 1️Criar ambiente virtual
-
+```bash
 python -m venv venv
 venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 python src/02_extract_metrics.py
 streamlit run src/app.py
-
+```
 ## Dashboard
 
 ### Funcionalidades
