@@ -33,15 +33,19 @@ def main():
         # Filtrar só os 5 bancos
         df_bpa = df_bpa[df_bpa["DENOM_CIA"].isin(BANKS)]
         df_bpp = df_bpp[df_bpp["DENOM_CIA"].isin(BANKS)]
+        df_dre = load_csv(year, f"dfp_cia_aberta_DRE_con_{year}.csv")
+        df_dre = df_dre[df_dre["DENOM_CIA"].isin(BANKS)]
 
         # Extrair métricas base
         total_assets = extract_metric(df_bpa, "Ativo Total")
         equity = extract_metric(df_bpp, "Patrimônio Líquido Consolidado")
+        net_income = extract_metric(df_dre, "Lucro ou Prejuízo Líquido Consolidado do Período")
+        net_income["metric"] = "net_income"
 
         total_assets["metric"] = "total_assets"
         equity["metric"] = "equity"
 
-        year_data = pd.concat([total_assets, equity], ignore_index=True)
+        year_data = pd.concat([total_assets, equity, net_income], ignore_index=True)
         year_data["year"] = year
 
         all_data.append(year_data)
@@ -60,8 +64,7 @@ def main():
     pivot["total_liabilities"] = pivot["total_assets"] - pivot["equity"]
 
     print("\nChecagem (primeiras 10 linhas):")
-    print(pivot[["DENOM_CIA", "year", "DT_REFER", "total_assets", "equity", "total_liabilities"]].head(10))
-
+    print(pivot[["DENOM_CIA", "year", "DT_REFER", "total_assets", "equity", "total_liabilities", "net_income"]].head(10))
     print("\nTotal linhas (pivot):", pivot.shape)
 
 if __name__ == "__main__":
