@@ -63,8 +63,23 @@ def main():
     # Derivar passivo: liabilities = assets - equity
     pivot["total_liabilities"] = pivot["total_assets"] - pivot["equity"]
 
+    # Métricas derivadas
+    pivot["ROE"] = pivot["net_income"] / pivot["equity"]
+    pivot["ROA"] = pivot["net_income"] / pivot["total_assets"]
+
+    # Salvar dataset final
+    pivot.to_csv("outputs/final_dataset.csv", index=False)
+    pivot.to_excel("outputs/final_dataset.xlsx", index=False)
+
+    print("\nArquivos salvos em outputs/:")
+    print(" - final_dataset.csv")
+    print(" - final_dataset.xlsx")
+
     print("\nChecagem (primeiras 10 linhas):")
-    print(pivot[["DENOM_CIA", "year", "DT_REFER", "total_assets", "equity", "total_liabilities", "net_income"]].head(10))
+    print(pivot[
+        ["DENOM_CIA", "year", "total_assets", "equity",
+         "net_income", "total_liabilities", "ROE", "ROA"]
+    ].head(10))
     print("\nTotal linhas (pivot):", pivot.shape)
 
 if __name__ == "__main__":
