@@ -104,7 +104,7 @@ O projeto implementa:
 
 ## Como Rodar o Projeto
 
-### 1Criar ambiente virtual
+### Criar ambiente virtual
 ```bash
 python -m venv venv
 venv\Scripts\activate  # Windows
